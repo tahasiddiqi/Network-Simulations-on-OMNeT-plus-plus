@@ -1,0 +1,11 @@
+network = Tictoc2
+eventlog-file = ${resultdir}/${configname}-${iterationvarsf}#${repetition}.elog
+eventlog-message-detail-pattern =
+eventlog-recording-intervals =
+record-eventlog = false
+simtime-resolution = ps
+**.module-eventlog-recording = false
+**.tic.windowsize = 5
+**.toc.N = 2
+**.tic.N = 2
+**.toc.windowsize = 5
