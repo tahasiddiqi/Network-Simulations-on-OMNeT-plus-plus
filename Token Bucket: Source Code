@@ -1,0 +1,118 @@
+#include <stdio.h>
+#include <string.h>
+#include <omnetpp.h>
+using namespace omnetpp;
+class taha: public cSimpleModule
+{
+private:
+simtime_t timer;
+cMessage *timeoutMsg;
+int k;
+cOutVector tahavector;
+public:
+taha();
+virtual ~taha();
+protected:
+virtual void initialize() override;
+virtual void handleMessage(cMessage *msg) override;
+};
+Define_Module(taha);
+taha::taha()
+{
+timeoutMsg = nullptr;
+}
+taha::~taha()
+{
+cancelAndDelete(timeoutMsg);
+}
+void taha::initialize(){
+timer = uniform(0,10);
+timeoutMsg = new cMessage(" start ");
+k = uniform(1,5);
+for(int i = 0; i< k; i++){
+EV<< " sending message " << endl;
+cMessage *msg = new cMessage( " Packet ");
+send(msg,"out");
+}
+scheduleAt(simTime()+timer, timeoutMsg);
+}
+void taha:: handleMessage(cMessage *msg){
+k = uniform(1,5);
+for(int i = 0; i< k; i++){
+EV<< " sending message " << endl;
+cMessage *msg = new cMessage( " Bucketlist ");
+send(msg,"out");
+}
+timer = uniform(0,10);
+tahavector.record(timer);
+scheduleAt(simTime()+timer, timeoutMsg);
+}
+class tokenB: public cSimpleModule
+{
+private:
+simtime_t timer;
+cMessage *timeoutMsg;
+int k;
+int tokencounter = 1;
+cQueue queue;
+public:
+tokenB();
+virtual ~tokenB();
+protected:
+virtual void initialize() override;
+virtual void handleMessage(cMessage *msg) override;
+};
+Define_Module(tokenB);
+tokenB::tokenB()
+{
+timeoutMsg = nullptr;
+}
+tokenB::~tokenB()
+{
+cancelAndDelete(timeoutMsg);
+}
+void tokenB::initialize(){
+timer = 9;
+timeoutMsg = new cMessage( " generate ");
+scheduleAt(simTime()+timer, timeoutMsg);
+}
+void tokenB:: handleMessage(cMessage *msg){
+if( msg == timeoutMsg){
+if(tokencounter<5){
+tokencounter++;
+EV<<" tokencounter value is "<< tokencounter << endl;
+}
+scheduleAt(simTime()+timer, timeoutMsg);
+}
+else if(tokencounter > 0){
+EV<< " queueing messages "<< endl;
+queue.insert(msg);
+cMessage *tmsg = (cMessage *)queue.pop();
+send(tmsg,"out");
+tokencounter--;
+EV<< " sent message to receiver, remaining tokens are: " << tokencounter << endl;
+}
+else{
+EV<< " received from Taha "<< endl;
+queue.insert(msg);
+}
+}
+class receiver: public cSimpleModule
+{
+private:
+cOutVector recvector;
+simsignal_t recsignal;
+protected:
+void initialize() override;
+void handleMessage(cMessage *msg)override;
+};
+Define_Module(receiver);
+void receiver:: initialize(){
+recsignal = registerSignal("rec");
+}
+void receiver:: handleMessage(cMessage *msg){
+EV<< " RECEIVED MESSAGE FROM tokenB "<< endl;
+simtime_t rec = simTime() - msg->getCreationTime();
+recvector.record(rec);
+delete msg;
+}
