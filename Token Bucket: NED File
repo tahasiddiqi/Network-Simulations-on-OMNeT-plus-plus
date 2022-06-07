@@ -1,0 +1,41 @@
+simple taha
+{
+parameters:
+@display("i=block/routing");
+gates:
+output out;
+}
+simple tokenB
+{
+parameters:
+@display("i=block/routing");
+gates:
+input in;
+output out;
+}
+simple receiver
+{
+parameters:
+@display("i=block/routing");
+gates:
+input in;
+}
+network bs13
+{
+submodules:
+TAHA: taha {
+parameters:
+@display("i=,cyan");
+}
+QUEUE: tokenB {
+parameters:
+@display("i=,gold");
+}
+RECEIVER: receiver{
+parameters:
+@display("i=,blue");
+}
+connections:
+TAHA.out --> { delay = 100ms; } --> QUEUE.in;
+RECEIVER.in <-- { delay = 100ms; } <-- QUEUE.out;
+}
