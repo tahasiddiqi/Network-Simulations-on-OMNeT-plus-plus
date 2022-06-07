@@ -1,0 +1,60 @@
+simple Tic2
+{
+parameters:
+//double datarate = default(2);
+int windowsize = default(2);
+int N = default(2);
+@display("i=block/routing");
+//double datarate;
+gates:
+input in;
+output out;
+}
+simple Toc2
+{
+parameters:
+int N = default(2);
+int windowsize = default(2);
+@display("i=block/routing");
+gates:
+input in;
+output out;
+}
+//
+// Two instances (tic and toc) of Txc1 connected both ways.
+// Tic and toc will pass messages to one another.
+//
+channel DatarateChannel
+{
+@class(cDatarateChannel);
+@signal[channelBusy](type=long);
+@signal[messageSent](type=cMessage);
+@signal[messageDiscarded](type=cMessage);
+@statistic[busy](...);
+@statistic[utilization](...);
+@statistic[packets](...);
+@statistic[packetBytes](...);
+@statistic[packetsDiscarded](...);
+@statistic[throughput](...);
+bool disabled = default(false);
+double delay = default(0s) @unit(s); // propagation delay
+double datarate = default(10bps) @unit(bps); // bits per second; 0=infinite
+double ber = default(0); // bit error rate (BER)
+double per = default(0); // packet error rate (PER)
+}
+network Tictoc2
+{
+@display("bgb=193,190");
+submodules:
+tic: Tic2 {
+parameters:
+@display("i=,cyan;p=133.96,43.996666");
+}
+toc: Toc2 {
+parameters:
+@display("i=,gold;p=45.966667,84.71");
+}
+connections:
+tic.out --> DatarateChannel --> toc.in;
+tic.in <-- DatarateChannel <-- toc.out;
+}
