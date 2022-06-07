@@ -1,0 +1,50 @@
+#include <stdio.h>
+#include <string.h>
+#include <omnetpp.h>
+using namespace omnetpp;
+class Toc2 : public cSimpleModule
+{
+private:
+int expectedseq;
+int N, temp, a;
+cMessage *controlmessage;
+int windowsize;
+int nextSeq;
+protected:
+virtual void handleMessage(cMessage *msg) override;
+virtual void initialize() override;
+};
+Define_Module(Toc2);
+void Toc2::initialize() {
+expectedseq = 0;
+N = par("N");
+windowsize = par("windowsize");
+nextSeq=1;
+WATCH(expectedseq);
+WATCH(nextSeq);
+}
+void Toc2::handleMessage(cMessage *msg)
+{
+EV << "Received "<<msg << endl;
+if(strcmp("controlmessage",msg->getName())==0){
+char buf[20];
+sprintf(buf,"windowsize %d", windowsize);
+cMessage *msg = new cMessage(buf);
+send(msg, "out");
+EV << "Sending Receiver window size" << endl;
+}
+else if (uniform(0, 1) < 0.1 ) {
+EV << "\"Losing\" message " << msg << endl;
+bubble("message lost");
+delete msg;
+}
+else if(nextSeq==atoi(msg->getName())){
+nextSeq++;
+if(++expectedseq == N){
+EV << msg << " received" << endl;
+delete msg;
+send(new cMessage("ack"), "out");
+expectedseq = 0;
+}
+}
+}
