@@ -1,1 +1,137 @@
 
+TIC –
+#include <stdio.h>
+#include<string.h>
+#include<omnetpp.h>
+using namespace omnetpp;
+class Tic2: public cSimpleModule {
+private:
+simtime_t timeout;
+cMessage *timeoutevent;
+int seq;
+cMessage *message;
+simtime_t intime;
+cMessage *regulartime;
+int i;
+cMessage *count[255];
+cMessage *temp[255];
+char timeeventseq[3];
+int windowsize;
+int j;
+int N;
+int k;
+cMessage *controlmessage;
+bool windowSizeReceived = false;
+public:
+Tic2();
+virtual ~Tic2();
+protected:
+virtual cMessage *generateNewMessage();
+virtual void sendCopyOf(cMessage *msg);
+virtual void initialize() override;
+virtual void handleMessage(cMessage *msg) override;
+};
+Define_Module(Tic2);
+Tic2::Tic2() {
+timeoutevent = message = regulartime = controlmessage = nullptr;
+}
+Tic2::~Tic2() {
+cancelAndDelete(timeoutevent);
+delete message;
+cancelAndDelete(regulartime);
+}
+void Tic2::initialize()
+{
+seq = 0;
+timeoutevent = new cMessage("timeoutevent");
+regulartime = new cMessage("regulartime");
+windowsize = par("windowsize");
+i = 0;
+j = 0;
+k = 0;
+N = par("N");
+timeout = 0.5*N ;
+intime = 0.5;
+scheduleAt(simTime() + intime, regulartime);
+for(i=0;i<256;i++)
+count[i]=nullptr;
+cMessage *msg = new cMessage("controlmessage");
+send(msg, "out");
+}
+void Tic2::handleMessage(cMessage *msg) {
+if (windowSizeReceived) {
+if (msg == regulartime) {
+if(++i != (windowsize + 1)){
+EV << "sending packet towards TOC.\n";
+message = generateNewMessage();
+sendCopyOf(message);
+sprintf(timeeventseq,"%d",seq);
+timeoutevent = new cMessage(timeeventseq);
+count[seq] = timeoutevent;
+scheduleAt(simTime() + intime, regulartime);
+scheduleAt(simTime() + timeout, timeoutevent);
+}
+}
+else if (msg->isSelfMessage()) {
+EV << "Timer has expired, Resending the message "<<msg<<endl;
+seq=atoi(msg->getName())-1;
+}
+else {
+if(i != windowsize ){
+EV << "Received:" << msg->getName() << "\n";
+EV << "Timer cancelled.\n";
+j = seq - N;
+while(j <= seq){
+timeoutevent=count[j];
+if(timeoutevent)
+if(timeoutevent->isSelfMessage())
+if(timeoutevent->isScheduled())
+cancelEvent(timeoutevent);
+j++;
+}
+delete msg;
+delete message;
+}
+else {
+EV << "Received:" << msg->getName() << "\n";
+EV << "Timer cancelled.\n";
+j = seq - N;
+while(j <= seq){
+timeoutevent=count[j] ;
+if(timeoutevent)
+if(timeoutevent->isSelfMessage())
+if(timeoutevent->isScheduled())
+cancelEvent(timeoutevent);
+j++;
+}
+delete msg;
+delete message;
+i = 0;
+}
+}
+}
+else{
+windowSizeReceived=true;
+EV<<"Receved window size."<<endl;
+}
+}
+cMessage *Tic2::generateNewMessage()
+{
+if(seq <= 254){
+char msgname[3];
+sprintf(msgname, "%d", ++seq);
+cMessage *msg = new cMessage(msgname);
+return msg;
+}
+if(seq == 255){
+char msgname[30];
+seq = 0;
+sprintf(msgname, "packet-%d", ++seq);
+cMessage *msg = new cMessage(msgname);
+return msg;
+}
+}
+void Tic2::sendCopyOf(cMessage *msg) {
+cMessage *copy = (cMessage *) msg->dup();
+send(copy, "out");
+}
